@@ -11,7 +11,7 @@ This page links to examples of how to implement some things with the Epic Stack.
   by [@kentcdodds](https://github.com/kentcdodds): Using client hints to avoid
   content layout shift with `prefers-reduced-motion` and framer motion
   animations.
-- [Cross-site Request Forgery Protection (CSRF)](https://github.com/kentcdodds/epic-stack-with-csrf)
+- [Cross-site Request Forgery Protection (CSRF)](https://github.com/epicweb-dev/epic-stack-example-csrf)
   by [@kentcdodds](https://github.com/kentcdodds): An example of the Epic Stack
   with CSRF protection on forms.
 - [Epic Stack + OpenAI](https://github.com/kentcdodds/epic-ai): by
@@ -62,9 +62,10 @@ This page links to examples of how to implement some things with the Epic Stack.
 - [Epic Stack + Argos](https://github.com/jsfez/epic-stack-with-argos) by
   [@jsfez](https://github.com/jsfez): An example of the Epic Stack with
   [Argos](https://www.argos-ci.com/) for visual testing
-- [Epic Stack monorepo with pnpm + turbo](https://github.com/PhilDL/epic-stack-monorepo):
-  An example of the Epic Stack in a monorepo setup, configs packages, UI
-  package, and "client-hints" example package.
+- [Epic Stack with Nx](https://github.com/isaacplmann/epic-stack-with-nx): An
+  example of using [Nx](https://nx.dev) in an Epic Stack app
+- [Epic Stack monorepo with pnpm + turbo](https://github.com/abetoots/epic-stack-turborepo):
+  An example of the Epic Stack in a monorepo setup
 - [Epic Stack + passkeys/webauthn](https://github.com/rperon/epic-stack-with-passkeys/)
   by [@rperon](https://github.com/rperon): An example of the Epic Stack with
   passkeys using
@@ -82,13 +83,39 @@ This page links to examples of how to implement some things with the Epic Stack.
   [Query API](https://github.com/gc-victor/query/blob/main/README.md#apis),
   [Query Funcions](https://github.com/gc-victor/query?tab=readme-ov-file#function)
   and [Query Studio](https://github.com/gc-victor/query-studio).
-- [`has-js` class](https://github.com/kentcdodds/epic-stack-example-has-js-class)
+- [`has-js` class](https://github.com/epicweb-dev/epic-stack-example-has-js-class)
   by [@kentcdodds](https://github.com/kentcdodds): An example of adding a
   `has-js` class on the `<html>` element so you can use that to easily display
   different content for users who do not have JavaScript enabled.
 - [Confetti](https://github.com/kentcdodds/epic-stack-example-confetti) by
   [@kentcdodds](https://github.com/kentcdodds): Display confetti when the user
   does something worthy of a celebration.
+- [Epic Stack Border animation](https://github.com/hakimLyon/epic-stack-with-css-border-animation)
+  by [@hakimLyon](https://github.com/hakimLyon): An example of Epic Stack with a
+  CSS border animation.
+- [Epic Stack with Keystatic](https://github.com/simonswiss/epic-stack-with-keystatic)
+  by [@simonswiss](https://github.com/simonswiss): An example adding a MDX blog,
+  editable from an elegant Admin UI with Keystatic.
+- [Epic Stack + Ariakit](https://github.com/gnapse/epic-stack) by
+  [@gnapse](https://github.com/gnapse): A fork of the Epic Stack that uses
+  [Ariakit](https://ariakit.org/) instead of Radix UI.
+- [Epic Stack + Stripe Payments](https://github.com/saurabhp75/epic-stripe) by
+  [@saurabhp75](https://github.com/saurabhp75): An example of Epic Stack with
+  [Stripe](https://ariakit.org/) payments.
+- [Epic Stack + Remix PWA](https://github.com/ShafSpecs/offline-epic-stack) by
+  [@ShafSpecs](https://github.com/ShafSpecs): An example of using Epic Stack
+  offline with [Remix PWA](https://remix-pwa.run). The guide can be found
+  [here](https://remix-pwa.run/docs/main/offline)
+- [Stripped down Epic Stack for content sites](https://github.com/arpitdalal/epic-content-stack)
+  by [@arpitdalal](https://github.com/arpitdalal): An example of stripped down
+  Epic Stack without DB, E2E, and authentication code. It's suitable for content
+  sites that don't need a DB or authentication.
+- [Epic Stack + Shadcn Themes](https://github.com/saurabhp75/epic-themes) by
+  [@saurabhp75](https://github.com/saurabhp75): An example of Epic Stack with
+  [Shadcn Themes](https://ui.shadcn.com/themes).
+- [Epic Stack Globe Animation](https://github.com/hakimLyon/epic-stack-github-globe)
+  by [@hakimLyon](https://github.com/hakimLyon): An example of Epic Stack with a
+  Globe animation as seen on GitHub's homepage.
 
 ## How to contribute
 

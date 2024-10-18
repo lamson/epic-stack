@@ -53,7 +53,7 @@ export async function requireUserId(
 		redirectTo =
 			redirectTo === null
 				? null
-				: redirectTo ?? `${requestUrl.pathname}${requestUrl.search}`
+				: (redirectTo ?? `${requestUrl.pathname}${requestUrl.search}`)
 		const loginParams = redirectTo ? new URLSearchParams({ redirectTo }) : null
 		const loginRedirect = ['/login', loginParams?.toString()]
 			.filter(Boolean)
@@ -96,7 +96,7 @@ export async function resetUserPassword({
 	username: User['username']
 	password: string
 }) {
-	const hashedPassword = await getPasswordHash(password);
+	const hashedPassword = await getPasswordHash(password)
 	return prisma.user.update({
 		where: { username },
 		data: {
@@ -198,7 +198,11 @@ export async function logout(
 	const sessionId = authSession.get(sessionKey)
 	// if this fails, we still need to delete the session from the user's browser
 	// and it doesn't do any harm staying in the db anyway.
-	if (sessionId) void prisma.session.deleteMany({ where: { id: sessionId } })
+	if (sessionId) {
+		// the .catch is important because that's what triggers the query.
+		// learn more about PrismaPromise: https://www.prisma.io/docs/orm/reference/prisma-client-reference#prismapromise-behavior
+		void prisma.session.deleteMany({ where: { id: sessionId } }).catch(() => {})
+	}
 	throw redirect(safeRedirect(redirectTo), {
 		...responseInit,
 		headers: combineHeaders(

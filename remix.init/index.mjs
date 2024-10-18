@@ -1,18 +1,18 @@
-import { execSync } from 'child_process'
-import crypto from 'crypto'
-import fs from 'fs/promises'
-import path from 'path'
+import { execSync } from 'node:child_process'
+import crypto from 'node:crypto'
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import toml from '@iarna/toml'
 import { $ } from 'execa'
 import inquirer from 'inquirer'
 import open from 'open'
 import parseGitHubURL from 'parse-github-url'
 
-const escapeRegExp = string =>
+const escapeRegExp = (string) =>
 	// $& means the whole matched string
 	string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-const getRandomString = length => crypto.randomBytes(length).toString('hex')
+const getRandomString = (length) => crypto.randomBytes(length).toString('hex')
 const getRandomString32 = () => getRandomString(32)
 
 export default async function main({ rootDirectory }) {
@@ -37,12 +37,10 @@ export default async function main({ rootDirectory }) {
 		fs.readFile(PKG_PATH, 'utf-8'),
 	])
 
-	const newEnv = env
-		.replace(/^SESSION_SECRET=.*$/m, `SESSION_SECRET="${getRandomString(16)}"`)
-		.replace(
-			/^INTERNAL_COMMAND_TOKEN=.*$/m,
-			`INTERNAL_COMMAND_TOKEN="${getRandomString(16)}"`,
-		)
+	const newEnv = env.replace(
+		/^SESSION_SECRET=.*$/m,
+		`SESSION_SECRET="${getRandomString(16)}"`,
+	)
 
 	const newFlyTomlContent = flyTomlContent.replace(
 		new RegExp(appNameRegex, 'g'),
@@ -68,10 +66,7 @@ export default async function main({ rootDirectory }) {
 		fs.rm(path.join(rootDirectory, 'docs'), { recursive: true }),
 		fs.rm(path.join(rootDirectory, 'tests/e2e/notes.test.ts')),
 		fs.rm(path.join(rootDirectory, 'tests/e2e/search.test.ts')),
-
-		// .git could exist if pointing to a local version of the template rather
-		// than the github version, and there's not any situation we'd want that.
-		fs.rm(path.join(rootDirectory, '.git'), { recursive: true, force: true }),
+		fs.rm(path.join(rootDirectory, '.github/workflows/version.yml')),
 	]
 
 	await Promise.all(fileOperationPromises)
@@ -88,7 +83,7 @@ export default async function main({ rootDirectory }) {
 	}
 
 	if (!process.env.SKIP_DEPLOYMENT) {
-		await setupDeployment({ rootDirectory }).catch(error => {
+		await setupDeployment({ rootDirectory }).catch((error) => {
 			console.error(error)
 
 			console.error(
@@ -117,7 +112,7 @@ async function setupDeployment({ rootDirectory }) {
 			name: 'shouldSetupDeployment',
 			type: 'confirm',
 			default: true,
-			message: 'Would you like to setup deployment right now?',
+			message: 'Would you like to set up deployment right now?',
 		},
 	])
 
@@ -164,7 +159,7 @@ async function setupDeployment({ rootDirectory }) {
 	await $I`fly apps create ${APP_NAME}`
 
 	console.log(`🤫 Setting secrets in apps`)
-	await $I`fly secrets set SESSION_SECRET=${getRandomString32()} INTERNAL_COMMAND_TOKEN=${getRandomString32()} HONEYPOT_SECRET=${getRandomString32()} --app ${APP_NAME}-staging`
+	await $I`fly secrets set SESSION_SECRET=${getRandomString32()} INTERNAL_COMMAND_TOKEN=${getRandomString32()} HONEYPOT_SECRET=${getRandomString32()} ALLOW_INDEXING=false --app ${APP_NAME}-staging`
 	await $I`fly secrets set SESSION_SECRET=${getRandomString32()} INTERNAL_COMMAND_TOKEN=${getRandomString32()} HONEYPOT_SECRET=${getRandomString32()} --app ${APP_NAME}`
 
 	console.log(
@@ -189,15 +184,6 @@ async function setupDeployment({ rootDirectory }) {
 	])
 	if (shouldDeploy) {
 		console.log(`🚀 Deploying apps...`)
-		console.log('  Moving Dockerfile and .dockerignore to root (temporarily)')
-		await fs.rename(
-			path.join(rootDirectory, 'other', 'Dockerfile'),
-			path.join(rootDirectory, 'Dockerfile'),
-		)
-		await fs.rename(
-			path.join(rootDirectory, 'other', '.dockerignore'),
-			path.join(rootDirectory, '.dockerignore'),
-		)
 		console.log(`  Starting with staging`)
 		await $I`fly deploy --app ${APP_NAME}-staging`
 		await open(`https://${APP_NAME}-staging.fly.dev/`)
@@ -206,15 +192,6 @@ async function setupDeployment({ rootDirectory }) {
 		await $I`fly deploy --app ${APP_NAME}`
 		await open(`https://${APP_NAME}.fly.dev/`)
 		console.log(`  Production deployed...`)
-		console.log('  Moving Dockerfile and .dockerignore back to other/')
-		await fs.rename(
-			path.join(rootDirectory, 'Dockerfile'),
-			path.join(rootDirectory, 'other', 'Dockerfile'),
-		)
-		await fs.rename(
-			path.join(rootDirectory, '.dockerignore'),
-			path.join(rootDirectory, 'other', '.dockerignore'),
-		)
 	}
 
 	const { shouldSetupGitHub } = await inquirer.prompt([
@@ -311,7 +288,7 @@ async function getPreferredRegion() {
 			type: 'list',
 			default: defaultRegion,
 			message: `Which region would you like to deploy to? The closest to you is ${defaultRegion}.`,
-			choices: availableRegions.platform.regions.map(region => ({
+			choices: availableRegions.platform.regions.map((region) => ({
 				name: `${region.name} (${region.code})`,
 				value: region.code,
 			})),
@@ -333,6 +310,6 @@ async function makeFlyRequest({ query, variables }) {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${flyToken}`,
 		},
-	}).then(response => response.json())
+	}).then((response) => response.json())
 	return json.data
 }

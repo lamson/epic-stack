@@ -33,7 +33,7 @@ function formatColors() {
 		if (typeof color === 'string') {
 			colors.push(key)
 		} else {
-			const colorGroup = Object.keys(color).map(subKey =>
+			const colorGroup = Object.keys(color).map((subKey) =>
 				subKey === 'DEFAULT' ? '' : subKey,
 			)
 			colors.push({ [key]: colorGroup })
@@ -54,11 +54,6 @@ const customTwMerge = extendTailwindMerge<string, string>({
 					text: Object.keys(extendedTheme.fontSize),
 				},
 			],
-			animate: [
-				{
-					animate: Object.keys(extendedTheme.animation),
-				},
-			],
 		},
 	},
 })
@@ -72,7 +67,7 @@ export function getDomainUrl(request: Request) {
 		request.headers.get('X-Forwarded-Host') ??
 		request.headers.get('host') ??
 		new URL(request.url).host
-	const protocol = host.includes('localhost') ? 'http' : 'https'
+	const protocol = request.headers.get('X-Forwarded-Proto') ?? 'http'
 	return `${protocol}://${host}`
 }
 
@@ -140,59 +135,6 @@ export function combineResponseInits(
 }
 
 /**
- * Provide a condition and if that condition is falsey, this throws an error
- * with the given message.
- *
- * inspired by invariant from 'tiny-invariant' except will still include the
- * message in production.
- *
- * @example
- * invariant(typeof value === 'string', `value must be a string`)
- *
- * @param condition The condition to check
- * @param message The message to throw (or a callback to generate the message)
- * @param responseInit Additional response init options if a response is thrown
- *
- * @throws {Error} if condition is falsey
- */
-export function invariant(
-	condition: any,
-	message: string | (() => string),
-): asserts condition {
-	if (!condition) {
-		throw new Error(typeof message === 'function' ? message() : message)
-	}
-}
-
-/**
- * Provide a condition and if that condition is falsey, this throws a 400
- * Response with the given message.
- *
- * inspired by invariant from 'tiny-invariant'
- *
- * @example
- * invariantResponse(typeof value === 'string', `value must be a string`)
- *
- * @param condition The condition to check
- * @param message The message to throw (or a callback to generate the message)
- * @param responseInit Additional response init options if a response is thrown
- *
- * @throws {Response} if condition is falsey
- */
-export function invariantResponse(
-	condition: any,
-	message: string | (() => string),
-	responseInit?: ResponseInit,
-): asserts condition {
-	if (!condition) {
-		throw new Response(typeof message === 'function' ? message() : message, {
-			status: 400,
-			...responseInit,
-		})
-	}
-}
-
-/**
  * Returns true if the current navigation is submitting the current route's
  * form. Defaults to the current route's form action and method POST.
  *
@@ -250,7 +192,7 @@ export function useDelayedIsPending({
 function callAll<Args extends Array<unknown>>(
 	...fns: Array<((...args: Args) => unknown) | undefined>
 ) {
-	return (...args: Args) => fns.forEach(fn => fn?.(...args))
+	return (...args: Args) => fns.forEach((fn) => fn?.(...args))
 }
 
 /**
@@ -271,17 +213,18 @@ export function useDoubleCheck() {
 		const onClick: React.ButtonHTMLAttributes<HTMLButtonElement>['onClick'] =
 			doubleCheck
 				? undefined
-				: e => {
+				: (e) => {
 						e.preventDefault()
 						setDoubleCheck(true)
-				  }
+					}
 
-		const onKeyUp: React.ButtonHTMLAttributes<HTMLButtonElement>['onKeyUp'] =
-			e => {
-				if (e.key === 'Escape') {
-					setDoubleCheck(false)
-				}
+		const onKeyUp: React.ButtonHTMLAttributes<HTMLButtonElement>['onKeyUp'] = (
+			e,
+		) => {
+			if (e.key === 'Escape') {
+				setDoubleCheck(false)
 			}
+		}
 
 		return {
 			...props,

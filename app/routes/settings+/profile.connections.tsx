@@ -1,7 +1,9 @@
+import { invariantResponse } from '@epic-web/invariant'
 import { type SEOHandle } from '@nasa-gcn/remix-seo'
 import {
 	json,
-	type DataFunctionArgs,
+	type LoaderFunctionArgs,
+	type ActionFunctionArgs,
 	type SerializeFrom,
 	type HeadersFunction,
 } from '@remix-run/node'
@@ -25,7 +27,6 @@ import {
 	providerNames,
 } from '#app/utils/connections.tsx'
 import { prisma } from '#app/utils/db.server.ts'
-import { invariantResponse } from '#app/utils/misc.tsx'
 import { makeTimings } from '#app/utils/timing.server.ts'
 import { createToastHeaders } from '#app/utils/toast.server.ts'
 import { type BreadcrumbHandle } from './profile.tsx'
@@ -49,7 +50,7 @@ async function userCanDeleteConnections(userId: string) {
 	return Boolean(user?._count.connections && user?._count.connections > 1)
 }
 
-export async function loader({ request }: DataFunctionArgs) {
+export async function loader({ request }: LoaderFunctionArgs) {
 	const userId = await requireUserId(request)
 	const timings = makeTimings('profile connections loader')
 	const rawConnections = await prisma.connection.findMany({
@@ -96,7 +97,7 @@ export const headers: HeadersFunction = ({ loaderHeaders }) => {
 	return headers
 }
 
-export async function action({ request }: DataFunctionArgs) {
+export async function action({ request }: ActionFunctionArgs) {
 	const userId = await requireUserId(request)
 	const formData = await request.formData()
 	invariantResponse(
@@ -131,7 +132,7 @@ export default function Connections() {
 				<div className="flex flex-col gap-2">
 					<p>Here are your current connections:</p>
 					<ul className="flex flex-col gap-4">
-						{data.connections.map(c => (
+						{data.connections.map((c) => (
 							<li key={c.id}>
 								<Connection
 									connection={c}
@@ -145,7 +146,7 @@ export default function Connections() {
 				<p>You don't have any connections yet.</p>
 			)}
 			<div className="mt-5 flex flex-col gap-5 border-b-2 border-t-2 border-border py-3">
-				{providerNames.map(providerName => (
+				{providerNames.map((providerName) => (
 					<ProviderConnectionForm
 						key={providerName}
 						type="Connect"
@@ -196,7 +197,7 @@ function Connection({
 									status={
 										deleteFetcher.state !== 'idle'
 											? 'pending'
-											: deleteFetcher.data?.status ?? 'idle'
+											: (deleteFetcher.data?.status ?? 'idle')
 									}
 								>
 									<Icon name="cross-1" />

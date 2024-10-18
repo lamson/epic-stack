@@ -55,17 +55,25 @@ Prior to your first deployment, you'll need to do a few things:
   [your repo secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
   with the name `FLY_API_TOKEN`.
 
-- Add a `SESSION_SECRET`, `INTERNAL_COMMAND_TOKEN`, and `HONEYPOT_SECRET` to
-  your fly app secrets, to do this you can run the following commands:
+- Add a `SESSION_SECRET` and `HONEYPOT_SECRET` to your fly app secrets, to do
+  this you can run the following commands:
 
   ```sh
-  fly secrets set SESSION_SECRET=$(openssl rand -hex 32) INTERNAL_COMMAND_TOKEN=$(openssl rand -hex 32) HONEYPOT_SECRET=$(openssl rand -hex 32) --app [YOUR_APP_NAME]
-  fly secrets set SESSION_SECRET=$(openssl rand -hex 32) INTERNAL_COMMAND_TOKEN=$(openssl rand -hex 32) HONEYPOT_SECRET=$(openssl rand -hex 32) --app [YOUR_APP_NAME]-staging
+  fly secrets set SESSION_SECRET=$(openssl rand -hex 32) HONEYPOT_SECRET=$(openssl rand -hex 32) --app [YOUR_APP_NAME]
+  fly secrets set SESSION_SECRET=$(openssl rand -hex 32) HONEYPOT_SECRET=$(openssl rand -hex 32) --app [YOUR_APP_NAME]-staging
   ```
 
   > **Note**: If you don't have openssl installed, you can also use
   > [1Password](https://1password.com/password-generator) to generate a random
   > secret, just replace `$(openssl rand -hex 32)` with the generated secret.
+
+- Add a `ALLOW_INDEXING` with `false` value to your non-production fly app
+  secrets, this is to prevent duplicate content from being indexed multiple
+  times by search engines. To do this you can run the following commands:
+
+  ```sh
+  fly secrets set ALLOW_INDEXING=false --app [YOUR_APP_NAME]-staging
+  ```
 
 6. Create production database:
 
@@ -120,24 +128,62 @@ Find instructions for this optional step in [the database docs](./database.md).
 
 Find instructions for this optional step in [the database docs](./database.md).
 
-## Deploying locally
+## Deploying locally using fly
 
-If you'd like to deploy locally you definitely can. You need to (temporarily)
-move the `Dockerfile` and the `.dockerignore` to the root of the project first.
-Then you can run the deploy command:
+If you'd like to deploy locally, just run fly's deploy command:
 
 ```
-mv ./other/Dockerfile Dockerfile
-mv ./other/.dockerignore .dockerignore
 fly deploy
 ```
 
-Once it's done, move the files back:
+## Deploying locally using docker/podman
+
+If you'd like to deploy locally by building a docker container image, you
+definitely can. For that you need to make some minimal changes to the Dockerfile
+located at other/Dockerfile. Remove everything from the line that says (#prepare
+for litefs) in "other/Dockerfile" till the end of file and swap with the
+contents below.
 
 ```
-mv Dockerfile ./other/Dockerfile
-mv .dockerignore ./other/.dockerignore
+# prepare for litefs
+VOLUME /litefs
+ADD . .
+
+EXPOSE ${PORT}
+ENTRYPOINT ["/myapp/other/docker-entry-point.sh"]
 ```
 
-You can keep the `Dockerfile` and `.dockerignore` in the root if you prefer,
-just make sure to remove the move step from the `.github/workflows/deploy.yml`.
+There are 2 things that we are doing here.
+
+1. docker volume is used to swap out the fly.io litefs mount.
+2. Docker ENTRYPOINT is used to execute some commands upon launching of the
+   docker container
+
+Create a file at other/docker-entry-point.sh with the contents below.
+
+```
+#!/bin/sh -ex
+
+npx prisma migrate deploy
+sqlite3 /litefs/data/sqlite.db "PRAGMA journal_mode = WAL;"
+sqlite3 /litefs/data/cache.db "PRAGMA journal_mode = WAL;"
+npm run start
+```
+
+This takes care of applying the prisma migrations, followed by launching the
+node application (on port 8081).
+
+Helpful commands:
+
+```
+# builds the docker container
+docker build -t epic-stack . -f other/Dockerfile --build-arg COMMIT_SHA=`git rev-parse --short HEAD`
+
+# mountpoint for your sqlite databases
+mkdir ~/litefs
+
+# Runs the docker container.
+docker run -d -p 8081:8081 -e SESSION_SECRET='somesecret' -e HONEYPOT_SECRET='somesecret' -e FLY='false' -v ~/litefs:/litefs epic-stack
+
+# http://localhost:8081 should now point to your docker instance. ~/litefs directory has the sqlite databases
+```

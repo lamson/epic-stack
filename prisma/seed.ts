@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker'
 import { promiseHash } from 'remix-utils/promise'
 import { prisma } from '#app/utils/db.server.ts'
+import { MOCK_CODE_GITHUB } from '#app/utils/providers/constants'
 import {
 	cleanupDb,
 	createPassword,
@@ -16,46 +17,8 @@ async function seed() {
 	console.time(`🌱 Database has been seeded`)
 
 	console.time('🧹 Cleaned up the database...')
-	await cleanupDb(prisma)
+	await cleanupDb()
 	console.timeEnd('🧹 Cleaned up the database...')
-
-	console.time('🔑 Created permissions...')
-	const entities = ['user', 'note']
-	const actions = ['create', 'read', 'update', 'delete']
-	const accesses = ['own', 'any'] as const
-	for (const entity of entities) {
-		for (const action of actions) {
-			for (const access of accesses) {
-				await prisma.permission.create({ data: { entity, action, access } })
-			}
-		}
-	}
-	console.timeEnd('🔑 Created permissions...')
-
-	console.time('👑 Created roles...')
-	await prisma.role.create({
-		data: {
-			name: 'admin',
-			permissions: {
-				connect: await prisma.permission.findMany({
-					select: { id: true },
-					where: { access: 'any' },
-				}),
-			},
-		},
-	})
-	await prisma.role.create({
-		data: {
-			name: 'user',
-			permissions: {
-				connect: await prisma.permission.findMany({
-					select: { id: true },
-					where: { access: 'own' },
-				}),
-			},
-		},
-	})
-	console.timeEnd('👑 Created roles...')
 
 	const totalUsers = 5
 	console.time(`👤 Created ${totalUsers} users...`)
@@ -83,14 +46,18 @@ async function seed() {
 									length: faker.number.int({ min: 1, max: 3 }),
 								}).map(() => {
 									const imgNumber = faker.number.int({ min: 0, max: 9 })
-									return noteImages[imgNumber]
+									const img = noteImages[imgNumber]
+									if (!img) {
+										throw new Error(`Could not find image #${imgNumber}`)
+									}
+									return img
 								}),
 							},
 						})),
 					},
 				},
 			})
-			.catch(e => {
+			.catch((e) => {
 				console.error('Error creating a user:', e)
 				return null
 			})
@@ -132,7 +99,7 @@ async function seed() {
 		}),
 	})
 
-	const githubUser = await insertGitHubUser('MOCK_CODE_GITHUB_KODY')
+	const githubUser = await insertGitHubUser(MOCK_CODE_GITHUB)
 
 	await prisma.user.create({
 		select: { id: true },
@@ -253,10 +220,16 @@ async function seed() {
 }
 
 seed()
-	.catch(e => {
+	.catch((e) => {
 		console.error(e)
 		process.exit(1)
 	})
 	.finally(async () => {
 		await prisma.$disconnect()
 	})
+
+// we're ok to import from the test directory in this file
+/*
+eslint
+	no-restricted-imports: "off",
+*/

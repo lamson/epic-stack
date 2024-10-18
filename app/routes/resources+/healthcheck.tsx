@@ -1,8 +1,8 @@
 // learn more: https://fly.io/docs/reference/configuration/#services-http_checks
-import { type DataFunctionArgs } from '@remix-run/node'
+import { type LoaderFunctionArgs } from '@remix-run/node'
 import { prisma } from '#app/utils/db.server.ts'
 
-export async function loader({ request }: DataFunctionArgs) {
+export async function loader({ request }: LoaderFunctionArgs) {
 	const host =
 		request.headers.get('X-Forwarded-Host') ?? request.headers.get('host')
 
@@ -14,7 +14,7 @@ export async function loader({ request }: DataFunctionArgs) {
 			fetch(`${new URL(request.url).protocol}${host}`, {
 				method: 'HEAD',
 				headers: { 'X-Healthcheck': 'true' },
-			}).then(r => {
+			}).then((r) => {
 				if (!r.ok) return Promise.reject(r)
 			}),
 		])

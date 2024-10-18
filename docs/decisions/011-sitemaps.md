@@ -2,7 +2,11 @@
 
 Date: 2023-06-05
 
-Status: accepted
+Status: deprecated
+
+> Update: The contribution in
+> [#456](https://github.com/epicweb-dev/epic-stack/pull/456) made it quite easy
+> to handle a sitemap so this decision has been reversed.
 
 ## Context
 
@@ -19,7 +23,7 @@ it's kind of annoying.
 ## Decision
 
 Instead of building a sitemap into the template, we'll use
-[an example](#app/examples.md) people can reference to add a sitemap to their
+[an example](/docs/examples.md) people can reference to add a sitemap to their
 Epic Stack sites if they like.
 
 ## Consequences

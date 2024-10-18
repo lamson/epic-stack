@@ -67,6 +67,20 @@ you can utilize Fly's `ssh` and `proxy` commands.
   fly proxy 5556:5555 --app [YOUR_APP_NAME]
   ```
 
+If you have multiple instances of your app running, and you'd like to make edits
+to your database, you will need to run `prisma:studio` on the primary instance.
+
+- Get a list of your app instances, the `ROLE` column will show which instance
+  is `primary`
+  ```sh
+  fly status --app [YOUR_APP_NAME]
+  ```
+- Run the console command with the `-s` select flag
+  ```sh
+  fly ssh console -C "npm run prisma:studio" -s --app [YOUR_APP_NAME]
+  ```
+- Use your arrow keys to select the primary instance
+
 To work with Prisma Studio and your deployed app's database, simply open
 `http://localhost:5556` in your browser.
 
@@ -144,14 +158,26 @@ if what you need to seed is a lot of data), so here's an easy way to help out:
 
 1. Create a script very similar to our `prisma/seed.ts` file which creates all
    the data you want to seed.
-1. Run the script locally to generate the data you want to seed.
+   ```sh nonumber
+   cp prisma/seed.ts ./prod-seed.local.ts
+   ```
+   Then modify that file to create the data you want to seed.
+1. Create a temporary database file to seed the data into.
+   ```sh
+   DATABASE_URL=file:./seed.local.db npx prisma migrate reset --skip-seed --force
+   ```
+1. Run the custom seed script locally to generate the data you want to seed.
+   ```sh
+   DATABASE_URL=file:./seed.local.db npx tsx ./prod-seed.local.ts
+   ```
 1. Create a "dump" of the seed database using the `sqlite3` command line tool.
    ```sh nonumber
-   sqlite3 seed.db .dump > seed.sql
+   sqlite3 ./prisma/seed.local.db .dump > seed.local.sql
    ```
-1. Copy the relevant bits from the `seed.sql` file into your `migration.sql`
-   file. The `seed.sql` will include create table/index lines etc. which should
-   already be in your `migration.sql`. You probably just want `INSERT` commands.
+1. Copy the relevant bits from the `seed.local.sql` file into your
+   `migration.sql` file. The `seed.local.sql` will include create table/index
+   lines etc. which should already be in your `migration.sql`. You probably just
+   want `INSERT` commands.
 1. Deploy your app and verify that the data was seeded correctly.
 
 If your app has already applied all migrations, then the changes to the
@@ -178,40 +204,16 @@ with more data without performing a migration, then it's a bit more involved.
    `fly sftp`)
 1. SSH into your production server and run the following command:
    ```sh nonumber
-   sqlite3 data.db < seed.sql
+   sqlite3 /tmp/data.db < seed.sql
+   ```
+1. Import the data into your database via litefs:
+   ```sh nonumber
+   litefs import -name sqlite.db /tmp/data.db
    ```
 1. Verify that your production database has been seeded correctly. If it hasn't,
    then restore your backup (asap).
 
 ## Backups
-
-### LiteFS Cloud Backups
-
-LifeFS Cloud is a service offered by Fly.io for managing backup and restore
-functionality.
-
-This is the simplest method for backing up your database.
-
-It offers the ability to restore your database to any point in time in the last
-30 days, with 5 minute granularity.
-
-Fly.io has some great documentation on how to set this up:
-
-- [Pricing](https://fly.io/docs/about/pricing/#litefs-cloud)
-- [LiteFS Cloud Setup](https://fly.io/docs/litefs/cloud-backups/)
-- [Restoring DB with LiteFS Cloud](https://fly.io/docs/litefs/cloud-restore/)
-- [Disaster Recovery with LiteFS Cloud](https://fly.io/docs/litefs/disaster-recovery/)
-
-The following is a summary of the steps to set up LiteFS Cloud:
-
-1. Create a LiteFS Cloud cluster in your Fly.io dashboard:
-   https://fly.io/dashboard/personal/litefs
-   - Take note of the auth token, you'll need it in the next step
-1. Set the `LITEFS_CLOUD_TOKEN` to the token from your dashboard:
-   ```sh
-   fly secrets set LITEFS_CLOUD_TOKEN="LITEFS_CLOUD_TOKEN_HERE" --app [YOUR_APP_NAME]
-   ```
-1. You should now be able to restore backups from the LiteFS dashboard.
 
 ### Manual DB Backups
 
@@ -236,7 +238,7 @@ You can manually create a backup for your database using the following steps:
 1. Create a backup file using `litefs export`, and exit the console (it is
    recommended to name the exported file with the current date):
    ```sh
-   lifefs export -name sqlite.db /backups/backup-2023-10-10.db
+   litefs export -name sqlite.db /backups/backup-2023-10-10.db
    exit
    ```
 1. Use sftp to download the backup file:
@@ -273,3 +275,94 @@ BACKUP OF THE CURRENT DATABASE BEFORE DOING THIS!!**
    ```sh
    exit
    ```
+
+## Troubleshooting
+
+### Faulty Prisma Migration
+
+If you accidentally run a faulty migration on prod DB, and you see this message
+in the logs:
+
+```sh
+migrate found failed migrations in the target database, new migrations will not be applied. Read more about how to resolve migration issues in a production database: https://pris.ly/d/migrate-resolve
+```
+
+You've got a few options:
+
+1. If you don't care about the data, you can delete the app on fly and re-deploy
+   it after deleting/fixing the faulty migration.
+2. If you have a recent backup of the DB, you can restore it and re-deploy the
+   app after deleting/fixing the faulty migration. **(Make sure that the backup
+   isn't too old, otherwise you'll lose data)**
+   - You can fix a faulty migration by either editing the migration SQL file, or
+     by deleting the particular migration folder from `prisma/migrations` and
+     re-generating the migration after fixing the error.
+3. If you do care about the data and don't have a backup, you can follow these
+   steps:
+
+   1. Comment out the
+      [`exec` section from `litefs.yml` file](https://github.com/epicweb-dev/epic-stack/blob/main/other/litefs.yml#L31-L37).
+
+   ```yml
+   # exec:
+   #   - cmd: npx prisma migrate deploy
+   #     if-candidate: true
+
+   #   - cmd: npm start
+   ```
+
+   2. Commit this change and deploy the app to fly.
+      - This will make sure that after building the dockerfile and deploying it
+        to the fly machine, `npx prisma migrate deploy` and `npm start` commands
+        won't be executed.
+   3. Now that the main machine is up and running, you can SSH into it by
+      running `fly ssh console --app [YOUR_APP_NAME]` in the terminal.
+   4. Create a backup of the DB and download it by following the steps mentioned
+      in the [Manual DB Backups](#manual-db-backups) section.
+   5. Make a copy of the downloaded DB backup file and store it in a secure
+      location (If something were to go wrong, we have a backup of the backup).
+   6. Write SQL or use a tool like
+      [DB Browser for SQLite](https://sqlitebrowser.org/) to remove the last
+      (failed) entry from `_prisma_migrations` table from the downloaded DB
+      backup file.
+      - If you're using DB Browser for SQLite but your DB isn't selectable when
+        selecting a file to open, change DB file extension to `sqlite` from
+        `db`. **Make sure to change it back to `db` before uploading it to the
+        fly machine**.
+   7. Follow the steps mentioned in the
+      [Manual DB restoration](#manual-db-restoration) section to restore the
+      modified DB backup file to the fly machine.
+   8. Now the DB is restored, but if you deploy the app with the faulty
+      migration, it will fail again. So you need to delete/fix the faulty
+      migration.
+      - You can fix a faulty migration by either editing the migration SQL file,
+        or by deleting the particular migration folder from `prisma/migrations`
+        and re-generating the migration after fixing the error.
+   9. Uncomment the
+      [`exec` section from `litefs.yml` file](https://github.com/epicweb-dev/epic-stack/blob/main/other/litefs.yml#L31-L37).
+
+   ```yml
+   exec:
+     - cmd: npx prisma migrate deploy
+       if-candidate: true
+
+     - cmd: npm start
+   ```
+
+   10. Commit this change and deploy the app to fly :tada:
+
+   NOTE: Steps 5-7 can be skipped if you can write SQL to remove the faulty
+   migration from the DB. You can use the following SQL query to remove the
+   faulty migration from the DB:
+
+   ```sql
+   DELETE FROM _prisma_migrations WHERE name = 'migration_name';
+   ```
+
+   Make sure to replace `migration_name` with the name of the faulty migration.
+
+This is particularly hard because of how CONSUL leases work. You cannot just
+simply spin up another machine and access your database from it, because only
+one machine can get the primary lease. So you have to disable exec commands so
+the machine that has primary lease can start up, then you can SSH into it and
+fix the DB.

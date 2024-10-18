@@ -1,3 +1,4 @@
+import { invariant } from '@epic-web/invariant'
 import { faker } from '@faker-js/faker'
 import { http } from 'msw'
 import { afterEach, expect, test } from 'vitest'
@@ -6,7 +7,6 @@ import { getSessionExpirationDate, sessionKey } from '#app/utils/auth.server.ts'
 import { connectionSessionStorage } from '#app/utils/connections.server.ts'
 import { GITHUB_PROVIDER_NAME } from '#app/utils/connections.tsx'
 import { prisma } from '#app/utils/db.server.ts'
-import { invariant } from '#app/utils/misc.tsx'
 import { authSessionStorage } from '#app/utils/session.server.ts'
 import { generateTOTP } from '#app/utils/totp.server.ts'
 import { createUser } from '#tests/db-utils.ts'
@@ -26,7 +26,7 @@ afterEach(async () => {
 test('a new user goes to onboarding', async () => {
 	const request = await setupRequest()
 	const response = await loader({ request, params: PARAMS, context: {} }).catch(
-		e => e,
+		(e) => e,
 	)
 	expect(response).toHaveRedirect('/onboarding/github')
 })
@@ -40,7 +40,7 @@ test('when auth fails, send the user to login with a toast', async () => {
 	)
 	const request = await setupRequest()
 	const response = await loader({ request, params: PARAMS, context: {} }).catch(
-		e => e,
+		(e) => e,
 	)
 	invariant(response instanceof Response, 'response should be a Response')
 	expect(response).toHaveRedirect('/login')
@@ -98,7 +98,7 @@ test(`when a user is logged in and has already connected, it doesn't do anything
 	})
 	const response = await loader({ request, params: PARAMS, context: {} })
 	expect(response).toHaveRedirect('/settings/profile/connections')
-	expect(response).toSendToast(
+	await expect(response).toSendToast(
 		expect.objectContaining({
 			title: 'Already Connected',
 			description: expect.stringContaining(githubUser.profile.login),
